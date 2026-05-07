@@ -1,0 +1,173 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System users with roles for admin access.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "staff", "user"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "Volunteer": {
+      "title": "Volunteer",
+      "description": "Volunteer applications.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "skills": { "type": "string" },
+        "availability": { "type": "string" },
+        "cvPath": { "type": "string" },
+        "motivation": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "reviewed", "accepted", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fullName", "email", "phone", "motivation", "status"]
+    },
+    "Donation": {
+      "title": "Donation",
+      "description": "Donation records.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "donorName": { "type": "string" },
+        "amount": { "type": "number" },
+        "donationType": { "type": "string", "enum": ["one-time", "monthly"] },
+        "paymentMethod": { "type": "string" },
+        "transactionReference": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["amount", "donationType", "transactionReference"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Upcoming and past events.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "location": { "type": "string" },
+        "eventDate": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "imageUrl", "location", "eventDate"]
+    },
+    "BlogPost": {
+      "title": "BlogPost",
+      "description": "News and awareness articles.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "content": { "type": "string" },
+        "featuredImage": { "type": "string" },
+        "category": { "type": "string" },
+        "author": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "slug", "content", "featuredImage", "category", "author"]
+    },
+    "Program": {
+      "title": "Program",
+      "description": "Core NGO programs and initiatives.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "pdfUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "imageUrl"]
+    },
+    "Sponsor": {
+      "title": "Sponsor",
+      "description": "Partnering organizations and sponsors.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "website": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "logoUrl"]
+    },
+    "Gallery": {
+      "title": "Gallery",
+      "description": "Photos of community outreach and events.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "imageUrl", "category"]
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "Submissions from the contact form.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "subject", "message"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Profile data for each user."
+    },
+    "/volunteers/{volunteerId}": {
+      "schema": "Volunteer",
+      "description": "Volunteer applications."
+    },
+    "/donations/{donationId}": {
+      "schema": "Donation",
+      "description": "Donation records."
+    },
+    "/events/{eventId}": {
+      "schema": "Event",
+      "description": "Upcoming events data."
+    },
+    "/blogPosts/{postId}": {
+      "schema": "BlogPost",
+      "description": "News and articles."
+    },
+    "/programs/{programId}": {
+      "schema": "Program",
+      "description": "Programs and initiatives details."
+    },
+    "/sponsors/{sponsorId}": {
+      "schema": "Sponsor",
+      "description": "Sponsor logos and links."
+    },
+    "/gallery/{photoId}": {
+      "schema": "Gallery",
+      "description": "Impact gallery images."
+    },
+    "/contactMessages/{messageId}": {
+      "schema": "ContactMessage",
+      "description": "Messages from visitors."
+    }
+  }
+}

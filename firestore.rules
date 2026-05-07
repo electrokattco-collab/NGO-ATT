@@ -1,0 +1,140 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // -------------------------------------------------------------------------
+    // 0. GLOBAL SAFETY NET
+    // -------------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // 1. GLOBAL HELPERS
+    // -------------------------------------------------------------------------
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Role-based helpers using Custom Claims
+    function hasRole(role) {
+      return isSignedIn() && request.auth.token.role == role;
+    }
+
+    function isSuperAdmin() {
+      return hasRole('super_admin');
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() || hasRole('admin');
+    }
+
+    function isEditor() {
+      return isAdmin() || hasRole('editor');
+    }
+
+    function isVolunteerManager() {
+      return isAdmin() || hasRole('volunteer_manager');
+    }
+
+    function isDonorManager() {
+      return isAdmin() || hasRole('donor_manager');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. VALIDATION BLUEPRINTS
+    // -------------------------------------------------------------------------
+
+    function isValidUser(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.email is string && data.email.size() <= 100 &&
+             data.role in ['super_admin', 'admin', 'editor', 'volunteer_manager', 'donor_manager', 'user'];
+    }
+
+    function isValidVolunteer(data) {
+      return data.fullName is string && data.fullName.size() <= 100 &&
+             data.email is string && data.email.size() <= 100 &&
+             data.status in ['pending', 'reviewed', 'accepted', 'rejected'];
+    }
+
+    function isValidBlogPost(data) {
+      return data.title is string && data.title.size() <= 200 &&
+             data.status in ['draft', 'published'];
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. MATCH BLOCKS
+    // -------------------------------------------------------------------------
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      // Only server (Admin SDK) can set roles, but we allow user to create their initial profile
+      allow create: if isSignedIn() && isOwner(userId) && incoming().role == 'user';
+      // Only Super Admin can change roles in Firestore directly (though still risky, best via API)
+      allow update: if (isOwner(userId) && incoming().role == existing().role) || isSuperAdmin();
+    }
+
+    match /volunteers/{volunteerId} {
+      allow get, list: if isVolunteerManager();
+      allow create: if true; // Public applications
+      allow update: if isVolunteerManager();
+      allow delete: if isAdmin();
+    }
+
+    match /donations/{donationId} {
+      allow get, list: if isDonorManager();
+      allow create: if true; // Public donations
+      allow update, delete: if isSuperAdmin();
+    }
+
+    match /blogPosts/{postId} {
+      allow read: if true;
+      allow create, update: if isEditor();
+      allow delete: if isAdmin();
+    }
+
+    match /programs/{programId} {
+      allow read: if true;
+      allow create, update: if isEditor();
+      allow delete: if isAdmin();
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isSuperAdmin();
+      allow write: if false; // System only
+    }
+
+    match /contactMessages/{messageId} {
+      allow get, list: if isAdmin();
+      allow create: if true;
+    }
+    
+    match /events/{eventId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}

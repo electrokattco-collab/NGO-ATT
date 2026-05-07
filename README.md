@@ -1,11 +1,71 @@
-<div align="center">
+# Awaken Thrive Transform (ATT) NGO Platform
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+A high-resilience, enterprise-grade NGO management platform engineered for South African mental wellness cohorts.
 
-  <h1>Built with AI Studio</h2>
+## 🚀 Strategic Architecture
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+This platform follows a modular, scalable architecture designed for production-readiness.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+- **Frontend:** React 19 + TailwindCSS 4 (Utility-first precise styling)
+- **Engine:** Vite (Optimized build pipeline)
+- **Database:** Firebase Firestore (Real-time NoSQL infrastructure)
+- **Auth:** Firebase Authentication (Secure identity management)
+- **Animation:** Framer Motion (Kinetic UI reveals)
+- **Logic:** Service-oriented architecture with custom hooks integration
 
-</div>
+## 📂 Intelligence Structure
+
+```
+src/
+├── animations/ # Strategic kinetic reveals
+├── components/
+│   ├── common/ # Universal tactical elements (Navbar, Footer)
+│   └── ui/     # Atomic reusable primitives (Button, Input, Card)
+├── constants/  # Centralized system configurations
+├── context/    # Identity and session management
+├── firebase/   # Core infrastructure setup
+├── hooks/      # Higher-order logic (useCollection, useAuth)
+├── layouts/    # Structural blueprints (Main, Admin)
+├── pages/      # Mission pages & operational dashboards
+├── services/   # Strategic internal services (Firebase, Payments)
+├── types/      # TypeScript matrix definitions
+└── utils/      # Utility interceptors (Formatting, Slugs)
+```
+
+## 🛠 Operational Setup
+
+1. **Clone the repository**
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+3. **Configure Environment Variables:**
+   Create a `.env` file with your Firebase credentials (use `firebase-applet-config.json` context).
+4. **Initiate Development:**
+   ```bash
+   npm run dev
+   ```
+
+## 🛡 Security Protocol
+
+The platform implements **Zero-Trust Firestore Security Rules**.
+- Identity-based access control.
+- Attribute-based validation (isValid[Entity] blueprints).
+- Purge protection for sensitive operational data.
+- Relational mapping between users and administrative roles.
+
+## 💳 Payment Logistics
+
+Pre-integrated structures for:
+- **Yoco Checkout:** Targeted at ZAR transactions.
+- **PayFast Form Logic:** Supporting South African localized gateways.
+
+## 📈 Impact Metrics
+
+- **Real-time Analytics:** Intelligence dashboard for administrative oversight.
+- **Volunteer Workflow:** Authorize/Decline recruits with single-click tactical actions.
+- **Blog Content Management:** Markdown-enabled article deployment system.
+
+---
+**ATT NGO Operational Directive 2026**
+*Awaken. Thrive. Transform.*
