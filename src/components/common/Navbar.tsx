@@ -123,6 +123,8 @@ export const Navbar = () => {
         <button
           className="lg:hidden text-primary"
           onClick={() => setIsOpen(!isOpen)}
+          aria-label="Open menu"
+          data-testid="mobile-menu" 
         >
           {isOpen ? <X className="text-dark" /> : <Menu className={cn(scrolled ? 'text-dark' : 'text-dark lg:text-white')} />}
         </button>
@@ -135,23 +137,36 @@ export const Navbar = () => {
             initial={{ opacity: 0, x: '100%' }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: '100%' }}
-            className="lg:hidden fixed inset-0 bg-white z-[60] py-24 px-8 flex flex-col space-y-6"
+            transition={{ type: 'tween', duration: 0.3 }}
+            className="lg:hidden fixed inset-0 bg-white z-[100] pointer-events-auto py-24 px-8 flex flex-col"
+            style={{ visibility: isOpen ? 'visible' : 'hidden' }}
           >
-            <button onClick={() => setIsOpen(false)} className="absolute top-6 right-6">
+            <button 
+              onClick={() => setIsOpen(false)} 
+              className="absolute top-6 right-6 z-[110] pointer-events-auto"
+              aria-label="Close menu"
+            >
               <X className="w-8 h-8 text-primary" />
             </button>
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
+            <nav className="flex flex-col space-y-6 pointer-events-auto">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  onClick={() => setIsOpen(false)}
+                  className="text-4xl font-black text-dark hover:text-primary uppercase tracking-tighter pointer-events-auto relative z-[110]"
+                  tabIndex={0}
+                >
+                  {link.name}
+                </Link>
+              ))}
+            </nav>
+            <div className="pt-8 pointer-events-auto">
+              <Link 
+                to={ROUTES.DONATIONS} 
                 onClick={() => setIsOpen(false)}
-                className="text-4xl font-black text-dark hover:text-primary uppercase tracking-tighter"
+                className="pointer-events-auto relative z-[110] block"
               >
-                {link.name}
-              </Link>
-            ))}
-            <div className="pt-8">
-              <Link to={ROUTES.DONATIONS} onClick={() => setIsOpen(false)}>
                 <Button className="w-full py-6 text-xl">DONATE</Button>
               </Link>
             </div>

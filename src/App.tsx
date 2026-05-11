@@ -3,6 +3,7 @@ import { AuthProvider } from '@/src/context/AuthContext';
 import { MainLayout } from '@/src/layouts/MainLayout';
 import { AdminLayout } from '@/src/layouts/AdminLayout';
 import { ScrollToTop } from '@/src/components/common/ScrollToTop';
+import { ErrorBoundary } from '@/src/components/common/ErrorBoundary';
 import { ROUTES } from '@/src/constants';
 
 // Pages
@@ -29,6 +30,7 @@ const Gallery = () => <div className="pt-40 text-center text-4xl font-bold min-h
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <AuthProvider>
       <Router>
         <ScrollToTop />
@@ -59,5 +61,6 @@ export default function App() {
         </Routes>
       </Router>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
