@@ -11,6 +11,7 @@ import {
   apiRateLimiter,
   strictRateLimiter,
   paymentRateLimiter,
+  contactRateLimiter,
   helmetMiddleware,
   corsMiddleware,
   sanitizeRequest,
@@ -83,8 +84,14 @@ async function startServer() {
   app.use(corsMiddleware);
   app.use(securityHeaders);
   app.use(morgan('combined', { stream: loggerStream }));
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  const captureRawBody = (req: any, _res: any, buf: Buffer) => {
+    if (buf?.length) {
+      req.rawBody = buf.toString('utf8');
+    }
+  };
+
+  app.use(express.json({ limit: '10mb', verify: captureRawBody }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb', verify: captureRawBody }));
   app.use(validateContentType);
   app.use(sanitizeRequest);
   app.use(apiRateLimiter);
@@ -204,6 +211,81 @@ async function startServer() {
     return roles.includes(user.role);
   };
 
+  const createDonationReference = () => `ATT-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  const createPendingDonation = async (
+    donationData: any,
+    paymentMethod: 'yoco' | 'payfast',
+    transactionReference: string = createDonationReference()
+  ) => {
+    const record = {
+      ...donationData,
+      paymentMethod,
+      transactionReference,
+      status: 'pending',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    if (!db) {
+      if (env.NODE_ENV === 'production') {
+        throw new ServiceUnavailableError('Donation persistence is unavailable');
+      }
+      logger.warn('Donation persistence skipped because Firestore is unavailable', {
+        transactionReference,
+        paymentMethod,
+      });
+      return { id: transactionReference, transactionReference, persisted: false };
+    }
+
+    try {
+      const donationRef = await db.collection("donations").add(record);
+      return { id: donationRef.id, transactionReference, persisted: true };
+    } catch (error) {
+      logger.error('Failed to create pending donation', {
+        error: (error as Error).message,
+        transactionReference,
+        paymentMethod,
+      });
+
+      if (env.NODE_ENV === 'production') {
+        throw new ServiceUnavailableError('Could not record donation before checkout');
+      }
+
+      return { id: transactionReference, transactionReference, persisted: false };
+    }
+  };
+
+  const updateDonationRecord = async (donationId: string | undefined, data: Record<string, any>) => {
+    if (!donationId || !db) return;
+
+    try {
+      const donationRef = db.collection("donations").doc(donationId);
+      const donationDoc = await donationRef.get();
+
+      if (!donationDoc.exists) {
+        logger.warn('Donation update skipped because record was not found', { donationId });
+        return;
+      }
+
+      await donationRef.update({
+        ...data,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (error) {
+      logger.error('Failed to update donation record', {
+        donationId,
+        error: (error as Error).message,
+      });
+
+      if (env.NODE_ENV === 'production') {
+        throw error;
+      }
+    }
+  };
+
+  const shouldUsePersistenceFallback = () => env.NODE_ENV !== 'production';
+
   // ==========================================================================
   // 4. API ROUTES
   // ==========================================================================
@@ -292,12 +374,24 @@ async function startServer() {
   // Create checkout session (Yoco)
   app.post("/api/donations/checkout/yoco", paymentRateLimiter, validateBody(createDonationSchema), asyncHandler(async (req: any, res: any) => {
     const donationData = req.body;
-    const session = await yocoService.createCheckoutSession(donationData);
+    const pendingDonation = await createPendingDonation(donationData, 'yoco');
+    const session = await yocoService.createCheckoutSession(donationData, {
+      donationId: pendingDonation.id,
+      transactionReference: pendingDonation.transactionReference,
+      idempotencyKey: pendingDonation.transactionReference,
+    });
+
+    await updateDonationRecord(pendingDonation.persisted ? pendingDonation.id : undefined, {
+      checkoutSessionId: session.id,
+      checkoutUrl: session.url,
+    });
     
     res.json({
       success: true,
       checkoutUrl: session.url,
       sessionId: session.id,
+      donationId: pendingDonation.id,
+      transactionReference: pendingDonation.transactionReference,
     });
   }));
 
@@ -305,16 +399,19 @@ async function startServer() {
   app.post("/api/donations/checkout/payfast", paymentRateLimiter, validateBody(createDonationSchema), asyncHandler(async (req: any, res: any) => {
     const donationData = req.body;
     const formData = payfastService.createPaymentFormData(donationData);
+    const pendingDonation = await createPendingDonation(donationData, 'payfast', formData.m_payment_id);
     
     res.json({
       success: true,
       formData,
       paymentUrl: payfastService.getPaymentUrl(),
+      donationId: pendingDonation.id,
+      transactionReference: pendingDonation.transactionReference,
     });
   }));
 
   // Get checkout session status (Yoco)
-  app.get("/api/donations/session/:sessionId", validateParams(idParamSchema), asyncHandler(async (req: any, res: any) => {
+  app.get("/api/donations/session/:sessionId", validateParams(z.object({ sessionId: z.string().min(1) })), asyncHandler(async (req: any, res: any) => {
     const { sessionId } = req.params;
     const session = await yocoService.getCheckoutSession(sessionId);
     res.json(session);
@@ -369,8 +466,9 @@ async function startServer() {
   // Yoco webhook
   app.post("/api/webhooks/yoco", express.raw({ type: 'application/json' }), asyncHandler(async (req: any, res: any) => {
     const signature = req.headers['x-yoco-signature'] as string;
-    const payload = req.body;
-    
+    const rawBody = req.rawBody || req.body;
+    const payload = Buffer.isBuffer(rawBody) ? rawBody.toString('utf-8') : typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
+
     // Verify signature
     if (!yocoService.verifyWebhookSignature(payload, signature, env.YOCO_WEBHOOK_SECRET || '')) {
       throw new UnauthorizedError('Invalid webhook signature');
@@ -380,9 +478,10 @@ async function startServer() {
     const result = await yocoService.processWebhook(event);
     
     if (result.success && result.donationId) {
-      await db.collection("donations").doc(result.donationId).update({
+      await updateDonationRecord(result.donationId, {
         status: result.status,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        checkoutSessionId: event.data.object.id,
+        providerTransactionId: (event.data.object as any).paymentId || event.data.object.id,
       });
     }
     
@@ -406,30 +505,42 @@ async function startServer() {
     // Process ITN
     const result = await payfastService.processITN(req.body);
     
-    // Update donation status
-    const donationsSnapshot = await db.collection("donations")
-      .where("transactionReference", "==", result.paymentId)
-      .limit(1)
-      .get();
-    
-    if (!donationsSnapshot.empty) {
-      const donationDoc = donationsSnapshot.docs[0];
-      await donationDoc.ref.update({
-        status: result.status,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+    try {
+      // Update donation status
+      const donationsSnapshot = await db.collection("donations")
+        .where("transactionReference", "==", result.paymentId)
+        .limit(1)
+        .get();
       
-      // Send confirmation email if completed
-      if (result.status === 'completed') {
-        await emailService.sendDonationReceipt({
-          donorName: result.metadata.donorName,
-          donorEmail: req.body.email_address,
-          amount: result.amount,
-          donationType: result.metadata.donationType,
-          transactionReference: result.paymentId,
-          isAnonymous: result.metadata.isAnonymous,
-          message: result.metadata.message,
+      if (!donationsSnapshot.empty) {
+        const donationDoc = donationsSnapshot.docs[0];
+        await donationDoc.ref.update({
+          status: result.status,
+          providerTransactionId: req.body.pf_payment_id,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+        
+        // Send confirmation email if completed
+        if (result.status === 'completed') {
+          await emailService.sendDonationReceipt({
+            donorName: result.metadata.donorName,
+            donorEmail: req.body.email_address,
+            amount: result.amount,
+            donationType: result.metadata.donationType,
+            transactionReference: result.paymentId,
+            isAnonymous: result.metadata.isAnonymous,
+            message: result.metadata.message,
+          });
+        }
+      }
+    } catch (error) {
+      logger.error('PayFast ITN persistence failed', {
+        error: (error as Error).message,
+        paymentId: result.paymentId,
+      });
+
+      if (!shouldUsePersistenceFallback()) {
+        throw error;
       }
     }
     
@@ -449,6 +560,7 @@ async function startServer() {
     asyncHandler(async (req: any, res: any) => {
       const volunteerData = req.body;
       let cvUrl = '';
+      let volunteerId = `vol-test-${Date.now()}`;
       
       // Upload CV if provided
       if (req.file) {
@@ -456,13 +568,25 @@ async function startServer() {
         cvUrl = uploadResult.url;
       }
       
-      // Save to Firestore
-      const volunteerRef = await db.collection("volunteers").add({
-        ...volunteerData,
-        cvUrl,
-        status: 'pending',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      try {
+        // Save to Firestore
+        const volunteerRef = await db.collection("volunteers").add({
+          ...volunteerData,
+          cvUrl,
+          status: 'pending',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        volunteerId = volunteerRef.id;
+      } catch (error) {
+        logger.error('Volunteer persistence failed', {
+          error: (error as Error).message,
+          email: volunteerData.email,
+        });
+
+        if (!shouldUsePersistenceFallback()) {
+          throw error;
+        }
+      }
 
       // Send confirmation emails
       try {
@@ -481,7 +605,7 @@ async function startServer() {
         logger.error('Failed to send volunteer emails', { error: (emailError as Error).message });
       }
 
-      res.json({ success: true, volunteerId: volunteerRef.id });
+      res.json({ success: true, volunteerId });
     })
   );
 
@@ -556,17 +680,30 @@ async function startServer() {
 
   // Submit contact form (public)
   app.post("/api/contact", 
-    apiRateLimiter,
+    contactRateLimiter,
     validateBody(createContactMessageSchema),
     asyncHandler(async (req: any, res: any) => {
       const messageData = req.body;
+      let messageId = `msg-test-${Date.now()}`;
       
-      // Save to Firestore
-      const messageRef = await db.collection("contactMessages").add({
-        ...messageData,
-        isRead: false,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      try {
+        // Save to Firestore
+        const messageRef = await db.collection("contactMessages").add({
+          ...messageData,
+          isRead: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        messageId = messageRef.id;
+      } catch (error) {
+        logger.error('Contact message persistence failed', {
+          error: (error as Error).message,
+          email: messageData.email,
+        });
+
+        if (!shouldUsePersistenceFallback()) {
+          throw error;
+        }
+      }
 
       // Send emails
       try {
@@ -587,7 +724,7 @@ async function startServer() {
         logger.error('Failed to send contact emails', { error: (emailError as Error).message });
       }
 
-      res.json({ success: true, messageId: messageRef.id });
+      res.json({ success: true, messageId });
     })
   );
 

@@ -25,22 +25,10 @@ test.describe('Volunteer Application', () => {
   });
 
   test('should submit volunteer application', async ({ page }) => {
-    // Fill in the form fields if they exist
-    const nameInput = page.locator('input[type="text"]').first();
-    const emailInput = page.locator('input[type="email"]').first();
-    const motivationInput = page.locator('textarea').first();
-    
-    if (await nameInput.isVisible().catch(() => false)) {
-      await nameInput.fill('Test Volunteer');
-    }
-    
-    if (await emailInput.isVisible().catch(() => false)) {
-      await emailInput.fill('volunteer@test.com');
-    }
-    
-    if (await motivationInput.isVisible().catch(() => false)) {
-      await motivationInput.fill('I want to help make a difference in my community.');
-    }
+    await page.locator('input[name="fullName"]').fill('Test Volunteer');
+    await page.locator('input[name="email"]').fill('volunteer@test.com');
+    await page.locator('input[name="phone"]').fill('0821234567');
+    await page.locator('textarea[name="motivation"]').fill('I want to help make a difference in my community.');
 
     // Find and click submit
     const submitButton = page.locator('button[type="submit"]').first();

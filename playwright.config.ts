@@ -65,6 +65,14 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test',
       ENABLE_RATE_LIMIT: 'false',
+      YOCO_WEBHOOK_SECRET: 'playwright-test-webhook-secret',
+      PAYFAST_MERCHANT_ID: 'pf_test_merchant',
+      PAYFAST_MERCHANT_KEY: 'pf_test_key',
+      PAYFAST_PASSPHRASE: 'playwright-test-passphrase',
+      PAYFAST_SANDBOX_MODE: 'true',
+      ENABLE_PAYMENTS: 'false',
+      ENABLE_EMAILS: 'false',
+      CORS_ORIGIN: 'http://localhost:3000',
     },
   },
 });

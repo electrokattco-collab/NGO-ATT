@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Send, CheckCircle2, Loader2, Sparkles, Heart } from 'lucide-react';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/src/lib/firebase';
 import { Link } from 'react-router-dom';
 
 export default function Volunteer() {
@@ -24,15 +22,27 @@ export default function Volunteer() {
     setError('');
 
     try {
-      await addDoc(collection(db, 'volunteers'), {
-        ...formData,
-        status: 'pending',
-        createdAt: serverTimestamp(),
+      const response = await fetch('/api/volunteers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => null);
+        throw new Error(
+          errorPayload?.error?.message ||
+          errorPayload?.message ||
+          'Failed to submit application'
+        );
+      }
+
       setSubmitted(true);
     } catch (err) {
       console.error(err);
-      setError('Failed to submit application. Please try again.');
+      setError((err as Error).message || 'Failed to submit application. Please try again.');
     } finally {
       setLoading(false);
     }

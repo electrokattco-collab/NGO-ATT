@@ -9,7 +9,7 @@
  */
 
 import type { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
-import { logger } from '@/src/lib/logger.js';
+import { logger, reportError } from '@/src/lib/logger.js';
 import { env } from '@/src/lib/env.js';
 
 // ============================================================================
@@ -222,6 +222,7 @@ export const globalErrorHandler: ErrorRequestHandler = (
 
   if (statusCode >= 500) {
     logger.error(`Server Error [${requestId}]: ${err.message}`, errorContext);
+    reportError(err, errorContext);
   } else if (statusCode === 429) {
     logger.warn(`Rate Limit Exceeded [${requestId}]: ${err.message}`, errorContext);
   } else {

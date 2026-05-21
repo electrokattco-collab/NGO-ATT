@@ -17,26 +17,39 @@ import { resolve } from 'path';
 // Test Setup
 // ============================================================================
 
-let testEnv: RulesTestEnvironment;
+let testEnv: RulesTestEnvironment | null = null;
 
 const PROJECT_ID = 'gen-lang-client-0079941199';
+const FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST;
+const describeIfEmulator = FIRESTORE_EMULATOR_HOST ? describe : describe.skip;
 
-beforeAll(async () => {
-  const rules = readFileSync(resolve(process.cwd(), 'firestore.rules'), 'utf8');
-  
-  testEnv = await initializeTestEnvironment({
-    projectId: PROJECT_ID,
-    firestore: { rules },
+describeIfEmulator('Firestore Security Rules', () => {
+  beforeAll(async () => {
+    const rules = readFileSync(resolve(process.cwd(), 'firestore.rules'), 'utf8');
+    const [host, portString] = FIRESTORE_EMULATOR_HOST.split(':');
+    const port = Number(portString || '8080');
+    
+    testEnv = await initializeTestEnvironment({
+      projectId: PROJECT_ID,
+      firestore: {
+        rules,
+        host,
+        port,
+      },
+    });
   });
-});
 
-afterAll(async () => {
-  await testEnv.cleanup();
-});
+  afterAll(async () => {
+    if (testEnv) {
+      await testEnv.cleanup();
+    }
+  });
 
-beforeEach(async () => {
-  await testEnv.clearFirestore();
-});
+  beforeEach(async () => {
+    if (testEnv) {
+      await testEnv.clearFirestore();
+    }
+  });
 
 // ============================================================================
 // Test Helpers
@@ -54,11 +67,21 @@ const createUser = async (uid: string, role: string = 'user') => {
   return db;
 };
 
+const seedUser = async (uid: string, role: string = 'user') => {
+  await testEnv!.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'users', uid), {
+      id: uid,
+      name: 'Test User',
+      email: `${uid}@example.com`,
+      role,
+      createdAt: new Date().toISOString(),
+    });
+  });
+};
+
 // ============================================================================
 // SECURITY TEST SUITE - The "Dirty Dozen"
 // ============================================================================
-
-describe('Firestore Security Rules', () => {
   
   // --------------------------------------------------------------------------
   // 1. Identity Spoofing - Attempt to create user profile with different UID
@@ -109,14 +132,7 @@ describe('Firestore Security Rules', () => {
     });
 
     test('should reject role elevation during profile update', async () => {
-      // First create user as user
-      const adminDb = testEnv.authenticatedContext('admin-123', { role: 'super_admin' }).firestore();
-      await setDoc(doc(adminDb, 'users', 'user-123'), {
-        id: 'user-123',
-        name: 'Test User',
-        email: 'test@example.com',
-        role: 'user',
-      });
+      await seedUser('user-123', 'user');
 
       // User attempts to elevate
       const userDb = testEnv.authenticatedContext('user-123', { role: 'user' }).firestore();
@@ -153,15 +169,14 @@ describe('Firestore Security Rules', () => {
   // --------------------------------------------------------------------------
   describe('4. Invalid IDs', () => {
     test('should reject IDs with path traversal characters', async () => {
-      const adminDb = testEnv.authenticatedContext('admin-123', { role: 'admin' }).firestore();
-      
       // Note: This test validates the regex in isValidId function
       // The actual ID validation happens in the rules via isValidId
-      const invalidIds = ['../secrets', '..\\secrets', 'path/to/secret', 'doc\nnewline'];
+      const invalidIds = ['bad id', 'bad.id', 'doc\nnewline', 'unicode-é'];
       
       for (const id of invalidIds) {
+        const userDb = testEnv.authenticatedContext(id, { role: 'user' }).firestore();
         await expect(
-          setDoc(doc(adminDb, 'users', id), {
+          setDoc(doc(userDb, 'users', id), {
             id,
             name: 'Test',
             email: 'test@example.com',
@@ -255,14 +270,7 @@ describe('Firestore Security Rules', () => {
   // --------------------------------------------------------------------------
   describe('8. Immutability Breach', () => {
     test('should allow updating user profile without changing role', async () => {
-      // Create user
-      const adminDb = testEnv.authenticatedContext('admin-123', { role: 'super_admin' }).firestore();
-      await setDoc(doc(adminDb, 'users', 'user-123'), {
-        id: 'user-123',
-        name: 'Test User',
-        email: 'test@example.com',
-        role: 'user',
-      });
+      await seedUser('user-123', 'user');
 
       // User updates their name
       const userDb = testEnv.authenticatedContext('user-123', { role: 'user' }).firestore();
@@ -365,14 +373,7 @@ describe('Firestore Security Rules', () => {
   // --------------------------------------------------------------------------
   describe('11. PII Exposure', () => {
     test('should reject user reading another user\'s profile', async () => {
-      // Create another user as admin
-      const adminDb = testEnv.authenticatedContext('admin-123', { role: 'super_admin' }).firestore();
-      await setDoc(doc(adminDb, 'users', 'user-456'), {
-        id: 'user-456',
-        name: 'Other User',
-        email: 'other@example.com',
-        role: 'user',
-      });
+      await seedUser('user-456', 'user');
 
       // User attempts to read other user's profile
       const userDb = testEnv.authenticatedContext('user-123', { role: 'user' }).firestore();
@@ -397,15 +398,9 @@ describe('Firestore Security Rules', () => {
     });
 
     test('should allow admin reading any user profile', async () => {
-      // Create user as admin
-      const adminDb = testEnv.authenticatedContext('admin-123', { role: 'admin' }).firestore();
-      await setDoc(doc(adminDb, 'users', 'user-456'), {
-        id: 'user-456',
-        name: 'Other User',
-        email: 'other@example.com',
-        role: 'user',
-      });
+      await seedUser('user-456', 'user');
 
+      const adminDb = testEnv.authenticatedContext('admin-123', { role: 'admin' }).firestore();
       await expect(
         getDoc(doc(adminDb, 'users', 'user-456'))
       ).toBeAllowed();

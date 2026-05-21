@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { MapPin, Phone, Mail, Send, Loader2, CheckCircle2, MessageSquare, HelpCircle } from 'lucide-react';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/src/lib/firebase';
 import { Link } from 'react-router-dom';
 
 const faqs = [
@@ -29,18 +27,35 @@ export default function Contact() {
   });
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
+
     try {
-      await addDoc(collection(db, 'contactMessages'), {
-        ...formData,
-        createdAt: serverTimestamp(),
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        const message =
+          payload?.error?.message ||
+          payload?.message ||
+          'Failed to transmit message. Please try again.';
+        throw new Error(message);
+      }
+
       setSubmitted(true);
     } catch (err) {
       console.error(err);
+      setError((err as Error).message || 'Failed to transmit message. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -142,6 +157,7 @@ export default function Contact() {
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sender Identifying Name</label>
                       <input
                         required
+                        name="name"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="w-full px-6 py-4 bg-white border border-slate-100 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none font-bold text-dark transition-all"
@@ -153,6 +169,7 @@ export default function Contact() {
                       <input
                         required
                         type="email"
+                        name="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         className="w-full px-6 py-4 bg-white border border-slate-100 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none font-bold text-dark transition-all"
@@ -165,6 +182,7 @@ export default function Contact() {
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subject Classification</label>
                     <input
                       required
+                      name="subject"
                       value={formData.subject}
                       onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                       className="w-full px-6 py-4 bg-white border border-slate-100 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none font-bold text-dark transition-all"
@@ -176,6 +194,7 @@ export default function Contact() {
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Inquiry Context</label>
                     <textarea
                       required
+                      name="message"
                       rows={6}
                       value={formData.message}
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
@@ -183,6 +202,8 @@ export default function Contact() {
                       placeholder="Discuss the details of your inquiry here..."
                     />
                   </div>
+
+                  {error && <p className="text-red-500 text-xs font-black uppercase tracking-tight">{error}</p>}
 
                   <button
                     disabled={loading}

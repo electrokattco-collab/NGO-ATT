@@ -9,6 +9,7 @@ export default {
   testEnvironment: 'node',
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
+    '^@/(.*)\\.js$': '<rootDir>/$1.ts',
     '^@/(.*)$': '<rootDir>/$1',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
@@ -25,8 +26,9 @@ export default {
     ],
   },
   testMatch: [
-    '**/__tests__/**/*.test.ts',
-    '**/?(*.)+(spec|test).ts',
+    '<rootDir>/tests/unit/**/*.ts',
+    '<rootDir>/tests/integration/**/*.ts',
+    '<rootDir>/tests/rules/**/*.ts',
   ],
   collectCoverageFrom: [
     'src/**/*.ts',

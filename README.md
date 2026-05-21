@@ -40,11 +40,22 @@ src/
    npm install
    ```
 3. **Configure Environment Variables:**
-   Create a `.env` file with your Firebase credentials (use `firebase-applet-config.json` context).
+   Create a `.env` file based on `.env.example` and fill in production credentials.
+   - In production, `SESSION_SECRET` must be strong and not the default placeholder.
+   - `CORS_ORIGIN` must contain only your production domain.
+   - `ENABLE_PAYMENTS` should be `false` for staging and `true` for live launch.
 4. **Initiate Development:**
    ```bash
    npm run dev
    ```
+
+## 🚀 Production and Rollout Guidance
+
+- Use separate Firebase projects for `development`, `staging`, and `production`.
+- Keep `.env` local and never commit private keys or `FIREBASE_SERVICE_ACCOUNT` JSON.
+- For safe rollout, start with an internal beta or canary deployment to a subset of traffic.
+- Verify payment gateways in sandbox mode before switching `PAYFAST_SANDBOX_MODE=false` and enabling live Yoco keys.
+- Confirm monitoring is configured via `SENTRY_DSN` or `LOG_AGGREGATOR_URL` before full launch.
 
 ## 🛡 Security Protocol
 

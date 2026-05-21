@@ -111,7 +111,7 @@ export function Navbar() {
             </button>
           )}
           <Link
-            to="/donate"
+            to="/donations"
             className="px-6 py-2 bg-primary text-white rounded shadow-md hover:bg-primary-hover transition-all text-sm font-bold"
           >
             Donate
@@ -151,7 +151,7 @@ export function Navbar() {
             ))}
             <div className="pt-8">
               <Link
-                to="/donate"
+                to="/donations"
                 onClick={() => setIsOpen(false)}
                 className="grid place-items-center w-full py-5 rounded-lg bg-primary text-white font-black text-xl"
               >

@@ -82,7 +82,7 @@ export const isEmailConfigured = (): boolean => {
  */
 export const sendEmail = async (data: EmailData): Promise<void> => {
   if (!isEmailConfigured()) {
-    if (env.NODE_ENV === 'development') {
+    if (env.NODE_ENV === 'development' || env.NODE_ENV === 'test') {
       logger.info('Email would be sent (emails disabled):', { to: data.to, subject: data.subject });
       return;
     }

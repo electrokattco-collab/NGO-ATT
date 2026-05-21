@@ -209,7 +209,7 @@ describe('PayFast Service', () => {
   });
 
   describe('createPaymentFormData', () => {
-    test('should throw error when not configured', () => {
+    test('should return simulated form data in non-production when not configured', () => {
       const donationData = {
         donorName: 'Test User',
         donorEmail: 'test@example.com',
@@ -218,9 +218,13 @@ describe('PayFast Service', () => {
         isAnonymous: false,
       };
 
-      expect(() => {
-        payfastService.createPaymentFormData(donationData);
-      }).toThrow();
+      const formData = payfastService.createPaymentFormData(donationData);
+
+      expect(formData).toHaveProperty('merchant_id');
+      expect(formData).toHaveProperty('merchant_key');
+      expect(formData).toHaveProperty('signature');
+      expect(formData.amount).toBe('100.00');
+      expect(formData.email_address).toBe('test@example.com');
     });
   });
 

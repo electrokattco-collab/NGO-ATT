@@ -141,7 +141,7 @@ export default function Programs() {
               Institutional Partnerships
             </Link>
             <Link
-              to="/donate"
+              to="/donations"
               className="btn-primary"
             >
               Sponsor Interventions

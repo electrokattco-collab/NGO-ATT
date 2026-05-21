@@ -92,9 +92,16 @@ service cloud.firestore {
       allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
       allow list: if isAdmin();
       // Only server (Admin SDK) can set roles, but we allow user to create their initial profile
-      allow create: if isSignedIn() && isOwner(userId) && incoming().role == 'user';
+      allow create: if isValidId(userId) &&
+                    isSignedIn() &&
+                    isOwner(userId) &&
+                    incoming().id == userId &&
+                    incoming().role == 'user' &&
+                    isValidUser(incoming());
       // Only Super Admin can change roles in Firestore directly (though still risky, best via API)
-      allow update: if (isOwner(userId) && incoming().role == existing().role) || isSuperAdmin();
+      allow update: if isValidId(userId) &&
+                    isValidUser(incoming()) &&
+                    ((isOwner(userId) && incoming().role == existing().role) || isSuperAdmin());
     }
 
     match /volunteers/{volunteerId} {
@@ -112,7 +119,7 @@ service cloud.firestore {
 
     match /blogPosts/{postId} {
       allow read: if true;
-      allow create, update: if isEditor();
+      allow create, update: if isEditor() && isValidBlogPost(incoming());
       allow delete: if isAdmin();
     }
 

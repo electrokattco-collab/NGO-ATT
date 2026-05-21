@@ -9,7 +9,10 @@
  */
 
 import winston from 'winston';
+import fs from 'fs';
 import path from 'path';
+import { URL } from 'url';
+import * as Sentry from '@sentry/node';
 import { env } from '@/src/lib/env.js';
 
 // ============================================================================
@@ -89,6 +92,9 @@ transports.push(
 // File transports - only in production
 if (env.NODE_ENV === 'production') {
   const logsDir = path.join(process.cwd(), 'logs');
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
   
   // Error log file
   transports.push(
@@ -123,6 +129,39 @@ if (env.NODE_ENV === 'production') {
   );
 }
 
+if (env.LOG_AGGREGATOR_URL) {
+  try {
+    const aggregatorUrl = new URL(env.LOG_AGGREGATOR_URL);
+    transports.push(
+      new winston.transports.Http({
+        host: aggregatorUrl.hostname,
+        port: aggregatorUrl.port ? Number(aggregatorUrl.port) : (aggregatorUrl.protocol === 'https:' ? 443 : 80),
+        path: `${aggregatorUrl.pathname}${aggregatorUrl.search}`,
+        ssl: aggregatorUrl.protocol === 'https:',
+        headers: env.LOG_AGGREGATOR_API_KEY ? { Authorization: `Bearer ${env.LOG_AGGREGATOR_API_KEY}` } : undefined,
+        format: prodFormat,
+      })
+    );
+  } catch (error) {
+    console.warn('Invalid LOG_AGGREGATOR_URL, skipping remote transport:', error);
+  }
+}
+
+// ============================================================================
+// Monitoring Setup
+// ============================================================================
+
+const sentryEnabled = Boolean(env.SENTRY_DSN);
+
+if (sentryEnabled) {
+  Sentry.init({
+    dsn: env.SENTRY_DSN,
+    environment: env.NODE_ENV,
+    tracesSampleRate: 0.0,
+    release: process.env.npm_package_version,
+  });
+}
+
 // ============================================================================
 // Logger Instance
 // ============================================================================
@@ -138,9 +177,16 @@ export const logger = winston.createLogger({
     environment: env.NODE_ENV,
   },
   transports,
-  // Don't exit on error
   exitOnError: false,
 });
+
+export const reportError = (error: Error, context: Record<string, any> = {}) => {
+  logger.error(error.message, { ...context, stack: error.stack });
+
+  if (sentryEnabled) {
+    Sentry.captureException(error, { extra: context });
+  }
+};
 
 // ============================================================================
 // HTTP Request Logger (Morgan-style)

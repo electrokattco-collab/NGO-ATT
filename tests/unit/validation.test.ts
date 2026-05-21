@@ -19,7 +19,7 @@ describe('Validation Schemas', () => {
     test('should validate valid donation', () => {
       const donation = {
         donorName: 'John Doe',
-        email: 'john@example.com',
+        donorEmail: 'john@example.com',
         amount: 100,
         donationType: 'one-time' as const,
         isAnonymous: false,
@@ -32,7 +32,7 @@ describe('Validation Schemas', () => {
     test('should reject negative amount', () => {
       const donation = {
         donorName: 'John Doe',
-        email: 'john@example.com',
+        donorEmail: 'john@example.com',
         amount: -100,
         donationType: 'one-time',
         isAnonymous: false,
@@ -45,7 +45,7 @@ describe('Validation Schemas', () => {
     test('should reject amount exceeding maximum', () => {
       const donation = {
         donorName: 'John Doe',
-        email: 'john@example.com',
+        donorEmail: 'john@example.com',
         amount: 2000000, // Exceeds 1M limit
         donationType: 'one-time',
         isAnonymous: false,
@@ -58,7 +58,7 @@ describe('Validation Schemas', () => {
     test('should reject invalid email', () => {
       const donation = {
         donorName: 'John Doe',
-        email: 'invalid-email',
+        donorEmail: 'invalid-email',
         amount: 100,
         donationType: 'one-time',
         isAnonymous: false,

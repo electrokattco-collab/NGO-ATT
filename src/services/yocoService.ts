@@ -5,6 +5,7 @@
  * Docs: https://developer.yoco.com/
  */
 
+import crypto from 'crypto';
 import { env } from '@/src/lib/env.js';
 import { logger } from '@/src/lib/logger.js';
 import { 
@@ -49,13 +50,17 @@ export interface YocoWebhookEvent {
   };
 }
 
+interface YocoCheckoutContext {
+  donationId?: string;
+  transactionReference?: string;
+  idempotencyKey?: string;
+}
+
 // ============================================================================
 // Configuration
 // ============================================================================
 
-const YOCO_API_BASE = env.NODE_ENV === 'production' 
-  ? 'https://payments.yoco.com/api'
-  : 'https://online.yoco.com/v1';
+const YOCO_API_BASE = 'https://payments.yoco.com/api';
 
 const YOCO_PUBLIC_KEY = env.YOCO_PUBLIC_KEY;
 const YOCO_SECRET_KEY = env.YOCO_SECRET_KEY;
@@ -71,61 +76,104 @@ export const isYocoConfigured = (): boolean => {
   return !!(YOCO_PUBLIC_KEY && YOCO_SECRET_KEY);
 };
 
+const mapYocoCheckoutStatus = (status: string): YocoCheckoutSession['status'] => {
+  switch (status) {
+    case 'completed':
+    case 'complete':
+      return 'complete';
+    case 'cancelled':
+    case 'canceled':
+      return 'cancelled';
+    case 'failed':
+      return 'failed';
+    case 'created':
+    case 'started':
+    case 'processing':
+    default:
+      return 'pending';
+  }
+};
+
+const buildCheckoutMetadata = (
+  donationData: DonationInput,
+  context: YocoCheckoutContext = {}
+): Record<string, string> => ({
+  donorName: donationData.donorName,
+  donorEmail: donationData.donorEmail || '',
+  donationType: donationData.donationType,
+  message: donationData.message || '',
+  isAnonymous: String(donationData.isAnonymous || false),
+  donationId: context.donationId || '',
+  transactionReference: context.transactionReference || '',
+});
+
+const createSimulatedCheckoutSession = (
+  donationData: DonationInput,
+  context: YocoCheckoutContext = {}
+): YocoCheckoutSession => {
+  const sessionId = `cs_test_${Date.now()}`;
+
+  return {
+    id: sessionId,
+    url: `${env.CORS_ORIGIN[0]}/donations/success?session_id=${sessionId}`,
+    amount: donationData.amount,
+    currency: 'ZAR',
+    status: 'pending',
+    metadata: buildCheckoutMetadata(donationData, context),
+    createdAt: new Date().toISOString(),
+  };
+};
+
 /**
  * Creates a Yoco checkout session
  * This generates a payment URL that the user is redirected to
  */
 export const createCheckoutSession = async (
-  donationData: DonationInput
+  donationData: DonationInput,
+  context: YocoCheckoutContext = {}
 ): Promise<YocoCheckoutSession> => {
   if (!isYocoConfigured()) {
+    if (env.NODE_ENV !== 'production') {
+      logger.info('Yoco: Simulating checkout session in non-production mode');
+      return createSimulatedCheckoutSession(donationData, context);
+    }
     throw new BadRequestError('Yoco payment gateway is not configured');
   }
 
   // Validate in test mode if payments disabled
   if (!env.ENABLE_PAYMENTS && env.NODE_ENV !== 'production') {
     logger.info('Yoco: Simulating checkout session (payments disabled)');
-    return {
-      id: `cs_test_${Date.now()}`,
-      url: `${env.CORS_ORIGIN[0]}/donations/success?session_id=cs_test_${Date.now()}`,
-      amount: donationData.amount,
-      currency: 'ZAR',
-      status: 'pending',
-      metadata: {
-        donorName: donationData.donorName,
-        donorEmail: donationData.donorEmail || '',
-        donationType: donationData.donationType,
-        message: donationData.message || '',
-        isAnonymous: String(donationData.isAnonymous || false),
-      },
-      createdAt: new Date().toISOString(),
-    };
+    return createSimulatedCheckoutSession(donationData, context);
   }
 
   try {
+    const idempotencyKey =
+      context.idempotencyKey ||
+      context.transactionReference ||
+      crypto.randomUUID();
+    const metadata = buildCheckoutMetadata(donationData, context);
+
     const response = await fetch(`${YOCO_API_BASE}/checkouts`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${YOCO_SECRET_KEY}`,
         'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
       },
       body: JSON.stringify({
         amount: Math.round(donationData.amount * 100), // Convert to cents
         currency: 'ZAR',
         successUrl: `${env.CORS_ORIGIN[0]}/donations/success?session_id={checkout.id}`,
         cancelUrl: `${env.CORS_ORIGIN[0]}/donations?cancelled=true`,
-        metadata: {
-          donorName: donationData.donorName,
-          donorEmail: donationData.donorEmail || '',
-          donationType: donationData.donationType,
-          message: donationData.message || '',
-          isAnonymous: String(donationData.isAnonymous || false),
-        },
+        failureUrl: `${env.CORS_ORIGIN[0]}/donations?failed=true`,
+        metadata,
+        externalId: context.transactionReference,
+        clientReferenceId: context.donationId,
       }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(async () => ({ message: await response.text() }));
       logger.error('Yoco checkout creation failed', { error, status: response.status });
       throw new BadRequestError(error.message || 'Failed to create checkout session');
     }
@@ -140,11 +188,11 @@ export const createCheckoutSession = async (
     return {
       id: session.id,
       url: session.redirectUrl || session.url,
-      amount: donationData.amount,
+      amount: typeof session.amount === 'number' ? session.amount / 100 : donationData.amount,
       currency: 'ZAR',
-      status: 'pending',
-      metadata: session.metadata,
-      createdAt: new Date().toISOString(),
+      status: mapYocoCheckoutStatus(session.status),
+      metadata: session.metadata || metadata,
+      createdAt: session.createdAt || new Date().toISOString(),
     };
   } catch (error) {
     logger.error('Yoco checkout creation error', { error: (error as Error).message });
@@ -156,10 +204,6 @@ export const createCheckoutSession = async (
  * Retrieves a checkout session by ID
  */
 export const getCheckoutSession = async (sessionId: string): Promise<YocoCheckoutSession> => {
-  if (!isYocoConfigured()) {
-    throw new BadRequestError('Yoco payment gateway is not configured');
-  }
-
   // Mock response for test mode
   if (sessionId.startsWith('cs_test_')) {
     return {
@@ -171,6 +215,10 @@ export const getCheckoutSession = async (sessionId: string): Promise<YocoCheckou
       metadata: {},
       createdAt: new Date().toISOString(),
     };
+  }
+
+  if (!isYocoConfigured()) {
+    throw new BadRequestError('Yoco payment gateway is not configured');
   }
 
   try {
@@ -191,7 +239,7 @@ export const getCheckoutSession = async (sessionId: string): Promise<YocoCheckou
       url: session.redirectUrl || '',
       amount: session.amount / 100, // Convert from cents
       currency: session.currency,
-      status: session.status,
+      status: mapYocoCheckoutStatus(session.status),
       metadata: session.metadata || {},
       createdAt: session.createdAt,
     };
@@ -210,19 +258,30 @@ export const verifyWebhookSignature = (
   secret: string
 ): boolean => {
   try {
-    // In production, use crypto to verify HMAC signature
-    // const crypto = await import('crypto');
-    // const expectedSignature = crypto
-    //   .createHmac('sha256', secret)
-    //   .update(payload)
-    //   .digest('hex');
-    // return signature === expectedSignature;
-    
-    // For now, log and accept (implement proper verification in production)
-    logger.debug('Yoco webhook signature verification', { signature });
-    return true;
+    if (!secret) {
+      if (env.NODE_ENV === 'production') {
+        logger.error('Yoco webhook verification failed: secret missing in production');
+        return false;
+      }
+      logger.warn('Yoco webhook secret not configured; allowing webhook in non-production environment');
+      return true;
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex');
+
+    const isValid = signature === expectedSignature;
+    logger.debug('Yoco webhook signature verification', {
+      expectedSignature,
+      receivedSignature: signature,
+      valid: isValid,
+    });
+
+    return isValid;
   } catch (error) {
-    logger.error('Webhook signature verification failed', { error });
+    logger.error('Webhook signature verification failed', { error: (error as Error).message });
     return false;
   }
 };
@@ -281,26 +340,6 @@ export const processWebhook = async (event: YocoWebhookEvent): Promise<{
  */
 export const getPublicKey = (): string => {
   return YOCO_PUBLIC_KEY || '';
-};
-
-// ============================================================================
-// Client-side Payment Intent (for custom checkout)
-// ============================================================================
-
-/**
- * Creates a payment token using Yoco's client SDK
- * This would be called from the frontend
- */
-export const createPaymentToken = async (cardDetails: {
-  number: string;
-  expiryMonth: string;
-  expiryYear: string;
-  cvv: string;
-  holderName: string;
-}): Promise<{ id: string }> => {
-  // This is a placeholder - actual implementation uses Yoco's JS SDK
-  // In production, this happens entirely client-side
-  throw new BadRequestError('Payment token creation must be done client-side');
 };
 
 // ============================================================================

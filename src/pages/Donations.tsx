@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ShieldCheck, Heart, CheckCircle2, ArrowLeft, Zap, Star, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { firebaseService } from '@/src/services/firebaseService';
-import { paymentService } from '@/src/services/paymentService';
-import { COLLECTIONS, ROUTES } from '@/src/constants';
+import { ROUTES } from '@/src/constants';
 import { cn } from '@/src/utils';
 import { Button } from '@/src/components/ui/Button';
 import { Badge } from '@/src/components/ui/Badge';
@@ -12,40 +10,90 @@ import { Badge } from '@/src/components/ui/Badge';
 export default function Donations() {
   const [amount, setAmount] = useState<number | string>(100);
   const [frequency, setFrequency] = useState<'once' | 'monthly'>('monthly');
+  const [paymentMethod, setPaymentMethod] = useState<'yoco' | 'payfast'>('yoco');
+  const [donorName, setDonorName] = useState('');
+  const [donorEmail, setDonorEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
 
   const predefinedAmounts = [150, 350, 750, 1500];
 
+  const submitPayFastForm = (paymentUrl: string, formData: Record<string, string>) => {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = paymentUrl;
+
+    Object.entries(formData).forEach(([key, value]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+  };
+
   const handleDonation = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      setError('Please enter a valid donation amount.');
+      return;
+    }
+
     setLoading(true);
     
     try {
-      // In a real production app, we would initiate the gateway here
-      const intent = {
-        amount: Number(amount),
-        currency: 'ZAR',
-        metadata: {
-          donorEmail: 'pending@user.com', // Would come from form or auth
-          donorName: 'Anonymous Supporter',
-          donationType: frequency === 'once' ? 'one-time' : 'monthly' as const
-        }
+      const payload = {
+        amount: numericAmount,
+        donorName: donorName.trim() || 'Anonymous Supporter',
+        donorEmail: donorEmail.trim() || undefined,
+        donationType: frequency === 'once' ? 'one-time' : 'monthly',
+        isAnonymous: !donorName.trim(),
       };
 
-      // Tactical simulation of payment gateway redirect
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      await firebaseService.addDoc(COLLECTIONS.DONATIONS, {
-        amount: Number(amount),
-        donationType: intent.metadata.donationType,
-        transactionReference: `ATT-${Date.now()}`,
-        status: 'completed'
+      const response = await fetch(`/api/donations/checkout/${paymentMethod}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
-      
-      setSuccess(true);
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error?.message ||
+          data?.message ||
+          'Unable to start secure checkout. Please try again.'
+        );
+      }
+
+      if (paymentMethod === 'payfast') {
+        submitPayFastForm(data.paymentUrl, data.formData);
+        return;
+      }
+
+      if (data.checkoutUrl) {
+        const checkoutUrl = new URL(data.checkoutUrl, window.location.origin);
+        if (checkoutUrl.origin === window.location.origin && checkoutUrl.pathname === '/donations/success') {
+          setSuccess(true);
+        } else {
+          window.location.assign(checkoutUrl.toString());
+        }
+        return;
+      }
+
+      throw new Error('Checkout did not return a redirect URL.');
     } catch (error) {
       console.error('Strategic transaction failure:', error);
+      setError((error as Error).message || 'Unable to start secure checkout. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -179,10 +227,52 @@ export default function Donations() {
                 </div>
 
                 <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <input
+                      value={donorName}
+                      onChange={(e) => setDonorName(e.target.value)}
+                      placeholder="Donor name (optional)"
+                      className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:border-primary outline-none font-bold text-dark transition-all placeholder:text-slate-300"
+                    />
+                    <input
+                      type="email"
+                      value={donorEmail}
+                      onChange={(e) => setDonorEmail(e.target.value)}
+                      placeholder="Receipt email (optional)"
+                      className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:border-primary outline-none font-bold text-dark transition-all placeholder:text-slate-300"
+                    />
+                  </div>
+
+                  <div className="flex p-2 bg-slate-50 rounded-2xl border border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('yoco')}
+                      className={cn(
+                        'flex-1 py-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all',
+                        paymentMethod === 'yoco' ? 'bg-white shadow-xl text-primary' : 'text-slate-400 hover:text-slate-600'
+                      )}
+                    >
+                      Yoco
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('payfast')}
+                      className={cn(
+                        'flex-1 py-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all',
+                        paymentMethod === 'payfast' ? 'bg-white shadow-xl text-primary' : 'text-slate-400 hover:text-slate-600'
+                      )}
+                    >
+                      PayFast
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
                    <p className="text-[10px] font-black uppercase text-slate-400 text-center tracking-[0.2em] leading-relaxed">
                      SECURE STRATEGIC CLEARANCE VIA GATEWAY (YOCO / PAYFAST) <br/>
                      <span className="text-primary/40">256-BIT ENCRYPTION ACTIVE</span>
                    </p>
+                   {error && <p className="text-red-500 text-xs font-black uppercase tracking-tight text-center">{error}</p>}
                    <Button
                     type="submit"
                     size="xl"

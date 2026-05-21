@@ -25,22 +25,10 @@ test.describe('Contact Form', () => {
   });
 
   test('should submit contact form', async ({ page }) => {
-    // Fill in the form
-    const nameInput = page.locator('input[type="text"]').first();
-    const emailInput = page.locator('input[type="email"]').first();
-    const messageInput = page.locator('textarea').first();
-    
-    if (await nameInput.isVisible().catch(() => false)) {
-      await nameInput.fill('Test User');
-    }
-    
-    if (await emailInput.isVisible().catch(() => false)) {
-      await emailInput.fill('test@example.com');
-    }
-    
-    if (await messageInput.isVisible().catch(() => false)) {
-      await messageInput.fill('This is a test message through the contact form.');
-    }
+    await page.locator('input[name="name"]').fill('Test User');
+    await page.locator('input[name="email"]').fill('test@example.com');
+    await page.locator('input[name="subject"]').fill('Playwright Contact Test');
+    await page.locator('textarea[name="message"]').fill('This is a test message through the contact form.');
 
     const submitButton = page.locator('button[type="submit"]').first();
     

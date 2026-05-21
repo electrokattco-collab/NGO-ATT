@@ -80,14 +80,34 @@ export const strictRateLimiter = rateLimit({
  * Payment rate limiter - very strict to prevent payment abuse
  */
 export const paymentRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // 10 payment attempts per hour
+  windowMs: env.PAYMENT_RATE_LIMIT_WINDOW_MS,
+  max: env.PAYMENT_RATE_LIMIT_MAX_REQUESTS,
   message: {
     error: 'Payment rate limit exceeded',
     message: 'Too many payment attempts. Please try again later.',
   },
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+/**
+ * Contact form rate limiter - protects the public contact endpoint
+ */
+export const contactRateLimiter = rateLimit({
+  windowMs: env.CONTACT_RATE_LIMIT_WINDOW_MS,
+  max: env.CONTACT_RATE_LIMIT_MAX_REQUESTS,
+  message: {
+    error: 'Contact rate limit exceeded',
+    message: 'Too many contact requests. Please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req: Request) => {
+    if (isTestEnv || process.env.ENABLE_RATE_LIMIT === 'false') {
+      return true;
+    }
+    return false;
+  },
 });
 
 // ============================================================================
@@ -262,8 +282,11 @@ export const validateContentType = (req: Request, res: Response, next: NextFunct
       return next();
     }
     
-    // Require JSON for API endpoints
+    // Allow form-encoded webhook POSTs for PayFast
     if (req.path.startsWith('/api/') && !contentType?.includes('application/json')) {
+      if (req.path === '/api/webhooks/payfast' && contentType?.includes('application/x-www-form-urlencoded')) {
+        return next();
+      }
       return res.status(415).json({
         error: 'Unsupported Media Type',
         message: 'Content-Type must be application/json for API endpoints',

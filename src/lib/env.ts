@@ -38,6 +38,10 @@ interface EnvConfig {
   CORS_ORIGIN: string[];
   RATE_LIMIT_WINDOW_MS: number;
   RATE_LIMIT_MAX_REQUESTS: number;
+  PAYMENT_RATE_LIMIT_WINDOW_MS: number;
+  PAYMENT_RATE_LIMIT_MAX_REQUESTS: number;
+  CONTACT_RATE_LIMIT_WINDOW_MS: number;
+  CONTACT_RATE_LIMIT_MAX_REQUESTS: number;
   
   // Payments
   YOCO_SECRET_KEY?: string;
@@ -47,6 +51,7 @@ interface EnvConfig {
   PAYFAST_MERCHANT_KEY?: string;
   PAYFAST_PASSPHRASE?: string;
   PAYFAST_SANDBOX_MODE: boolean;
+  VIRUS_SCAN_ENABLED: boolean;
   
   // Email
   SENDGRID_API_KEY?: string;
@@ -55,6 +60,8 @@ interface EnvConfig {
   
   // Monitoring
   SENTRY_DSN?: string;
+  LOG_AGGREGATOR_URL?: string;
+  LOG_AGGREGATOR_API_KEY?: string;
   LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error';
   
   // Feature Flags
@@ -135,8 +142,10 @@ function loadConfig(): EnvConfig {
       // Payments
       YOCO_SECRET_KEY: getEnvVar('YOCO_SECRET_KEY', false),
       YOCO_PUBLIC_KEY: getEnvVar('YOCO_PUBLIC_KEY', false),
+      YOCO_WEBHOOK_SECRET: getEnvVar('YOCO_WEBHOOK_SECRET', false),
       PAYFAST_MERCHANT_ID: getEnvVar('PAYFAST_MERCHANT_ID', false),
       PAYFAST_MERCHANT_KEY: getEnvVar('PAYFAST_MERCHANT_KEY', false),
+      PAYFAST_PASSPHRASE: getEnvVar('PAYFAST_PASSPHRASE', false) || '',
       PAYFAST_SANDBOX_MODE: parseBoolean(getEnvVar('PAYFAST_SANDBOX_MODE', false), true),
       
       // Email
@@ -146,7 +155,18 @@ function loadConfig(): EnvConfig {
       
       // Monitoring
       SENTRY_DSN: getEnvVar('SENTRY_DSN', false),
+      LOG_AGGREGATOR_URL: getEnvVar('LOG_AGGREGATOR_URL', false),
+      LOG_AGGREGATOR_API_KEY: getEnvVar('LOG_AGGREGATOR_API_KEY', false),
       LOG_LEVEL: (getEnvVar('LOG_LEVEL', false) as EnvConfig['LOG_LEVEL']) || 'info',
+      
+      // Rate limiting
+      PAYMENT_RATE_LIMIT_WINDOW_MS: parseIntOrDefault(getEnvVar('PAYMENT_RATE_LIMIT_WINDOW_MS', false), 60 * 60 * 1000),
+      PAYMENT_RATE_LIMIT_MAX_REQUESTS: parseIntOrDefault(getEnvVar('PAYMENT_RATE_LIMIT_MAX_REQUESTS', false), 10),
+      CONTACT_RATE_LIMIT_WINDOW_MS: parseIntOrDefault(getEnvVar('CONTACT_RATE_LIMIT_WINDOW_MS', false), 15 * 60 * 1000),
+      CONTACT_RATE_LIMIT_MAX_REQUESTS: parseIntOrDefault(getEnvVar('CONTACT_RATE_LIMIT_MAX_REQUESTS', false), 10),
+      
+      // File uploads
+      VIRUS_SCAN_ENABLED: parseBoolean(getEnvVar('VIRUS_SCAN_ENABLED', false), false),
       
       // Feature Flags
       ENABLE_PAYMENTS: parseBoolean(getEnvVar('ENABLE_PAYMENTS', false), false),
@@ -165,6 +185,17 @@ function loadConfig(): EnvConfig {
       if (config.SESSION_SECRET.length < 32) {
         throw new EnvValidationError(
           'SESSION_SECRET must be at least 32 characters long in production!'
+        );
+      }
+      
+      if (!config.CORS_ORIGIN.length) {
+        throw new EnvValidationError('CORS_ORIGIN must be configured for production.');
+      }
+      
+      const invalidOrigins = config.CORS_ORIGIN.filter(origin => /(localhost|127\.0\.0\.1)/.test(origin));
+      if (invalidOrigins.length > 0) {
+        throw new EnvValidationError(
+          `Production CORS_ORIGIN cannot contain local development entries: ${invalidOrigins.join(', ')}`
         );
       }
       

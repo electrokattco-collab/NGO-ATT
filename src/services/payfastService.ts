@@ -5,6 +5,7 @@
  * Docs: https://developers.payfast.co.za/docs
  */
 
+import crypto from 'crypto';
 import { env } from '@/src/lib/env.js';
 import { logger } from '@/src/lib/logger.js';
 import { type DonationInput } from '@/src/lib/validation.js';
@@ -97,25 +98,19 @@ export const isPayFastConfigured = (): boolean => {
  * PayFast requires fields to be sorted alphabetically and concatenated
  */
 const generateSignature = (data: Record<string, string>, passphrase: string = ''): string => {
-  // Remove signature if present
   const { signature, ...dataWithoutSignature } = data;
   
-  // Sort keys alphabetically and create query string
   const sortedKeys = Object.keys(dataWithoutSignature).sort();
   const paramString = sortedKeys
     .filter(key => dataWithoutSignature[key] !== undefined && dataWithoutSignature[key] !== '')
     .map(key => `${key}=${encodeURIComponent(dataWithoutSignature[key]).replace(/%20/g, '+')}`)
     .join('&');
   
-  // Add passphrase if provided
   const stringToHash = passphrase 
     ? `${paramString}&passphrase=${encodeURIComponent(passphrase).replace(/%20/g, '+')}`
     : paramString;
-  
-  // Generate MD5 hash
-  // In production, use Node.js crypto module
-  // For now, return a placeholder (implement proper hashing)
-  return stringToHash;
+
+  return crypto.createHash('md5').update(stringToHash).digest('hex');
 };
 
 /**
@@ -134,11 +129,37 @@ const generatePaymentId = (): string => {
  * This data is used to create a form that submits to PayFast
  */
 export const createPaymentFormData = (donationData: DonationInput): PayFastFormData => {
+  const paymentId = generatePaymentId();
+
   if (!isPayFastConfigured()) {
+    if (env.NODE_ENV !== 'production') {
+      logger.info('PayFast: Simulating form data in non-production mode');
+      const simulatedFormData: Omit<PayFastFormData, 'signature'> = {
+        merchant_id: MERCHANT_ID || 'pf_test_merchant',
+        merchant_key: MERCHANT_KEY || 'pf_test_key',
+        return_url: `${env.CORS_ORIGIN[0]}/donations/success`,
+        cancel_url: `${env.CORS_ORIGIN[0]}/donations?cancelled=true`,
+        notify_url: `${env.CORS_ORIGIN[0]}/api/webhooks/payfast`,
+        name_first: donationData.donorName.split(' ')[0] || 'Supporter',
+        name_last: donationData.donorName.split(' ').slice(1).join(' ') || 'ATT',
+        email_address: donationData.donorEmail,
+        m_payment_id: paymentId,
+        amount: donationData.amount.toFixed(2),
+        item_name: `Donation to ATT NGO (${donationData.donationType})`,
+        item_description: donationData.message || `Thank you for your ${donationData.donationType} donation`,
+        custom_str1: donationData.donationType,
+        custom_str2: String(donationData.isAnonymous || false),
+        custom_str3: donationData.message || '',
+        custom_str4: donationData.donorName,
+      };
+
+      return {
+        ...simulatedFormData,
+        signature: generateSignature(simulatedFormData as Record<string, string>, PASSPHRASE),
+      };
+    }
     throw new BadRequestError('PayFast payment gateway is not configured');
   }
-
-  const paymentId = generatePaymentId();
   const baseUrl = env.CORS_ORIGIN[0] || 'http://localhost:3000';
   
   // Split name into first and last
@@ -193,7 +214,6 @@ export const getPaymentUrl = (): string => {
  */
 export const verifyITN = async (payload: PayFastITNPayload): Promise<boolean> => {
   try {
-    // Verify signature
     const expectedSignature = generateSignature(payload as unknown as Record<string, string>, PASSPHRASE);
     
     if (payload.signature !== expectedSignature) {
@@ -204,7 +224,11 @@ export const verifyITN = async (payload: PayFastITNPayload): Promise<boolean> =>
       return false;
     }
 
-    // Additional verification: Query PayFast to confirm
+    if (env.NODE_ENV === 'test') {
+      logger.debug('Skipping remote PayFast validation in test environment');
+      return true;
+    }
+
     const verificationUrl = env.NODE_ENV === 'production'
       ? 'https://www.payfast.co.za/eng/query/validate'
       : 'https://sandbox.payfast.co.za/eng/query/validate';
@@ -292,19 +316,21 @@ const mapPaymentStatus = (payfastStatus: string): 'completed' | 'failed' | 'canc
  * For additional security, verify the request comes from PayFast
  */
 export const isValidPayFastIP = (clientIP: string): boolean => {
-  // PayFast production IPs (check documentation for current list)
   const validIPs = [
     '197.97.145.144',
     '197.97.145.145',
     '197.97.145.146',
-    // Sandbox IPs
-    ' sandbox.payfast.co.za',
+    '102.165.216.0/23',
+    '41.74.128.0/22',
   ];
 
-  // In production, implement proper IP validation
-  // For now, log and accept
   logger.debug('PayFast IP check', { clientIP });
-  return true;
+
+  if (env.NODE_ENV !== 'production') {
+    return true;
+  }
+
+  return validIPs.some(ip => clientIP.startsWith(ip.replace('/23', '').replace('/22', '')));
 };
 
 // ============================================================================
