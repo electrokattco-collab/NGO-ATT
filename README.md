@@ -1,53 +1,74 @@
-# ATT NGO - Static Site (GitHub Pages)
+# TSOGA AFRICAN CHILD NPC - Static Site (GitHub Pages)
 
-This is the **static GitHub Pages version** of the ATT NGO website. It contains pure HTML, CSS, and JavaScript with no build steps, no server requirements, and no external dependencies.
+This is the **static GitHub Pages version** of the Tsoga African Child NPC website. It contains pure HTML, CSS, and JavaScript with no build steps, no server requirements, and no external dependencies.
 
-## Branch Information
+## About Tsoga African Child NPC
 
-- **`main`** (this branch): Static GitHub Pages site — what you're viewing now
-- **`development`**: Full-stack React + TypeScript + Firebase version with admin dashboard and dynamic features
+**Tsoga African Child NPC** is a registered Non-Profit Company dedicated to addressing trauma and mental wellness among South African school learners through comprehensive, school-based intervention programs.
+
+- **Legal Name:** Tsoga African Child NPC
+- **Registration Number:** 2024/659725/08
+- **Tax Number:** 9641744199
+- **Program:** Supporting Resilience Mental Wellness (SRMW) Initiative
+- **Founded:** 2024
+- **Location:** 7 Ramskin, Atteridgeville, Pretoria, 0008
+
+## Our Mission
+
+To provide sustained, evidence-based intervention programs that support the holistic well-being of learners through comprehensive counselling services, educator empowerment, and family engagement, ultimately improving learner behaviour, academic performance, and life outcomes over an extended period of eight years or more.
 
 ## Pages
 
 | Page | File | Description |
 |------|------|-------------|
 | Home | `index.html` | Landing page with mission overview |
-| About | `about.html` | Organization story, mission, vision, team |
-| Programs | `programs.html` | Mental wellness intervention programs |
+| About | `about.html` | Organization story, vision, mission, team |
+| Programs | `programs.html` | SRMW program details and services |
 | Volunteer | `volunteer.html` | Volunteer application form (Formspree) |
 | Donations | `donations.html` | Donation information and methods |
 | Contact | `contact.html` | Contact form (Formspree) and office info |
-| Blog | `blog.html` | Static blog posts and articles |
+| Blog | `blog.html` | News, insights, and stories |
 
 ## File Structure
 
 ```
 ├── index.html          # Homepage
 ├── about.html          # About page
-├── programs.html       # Programs page
+├── programs.html       # SRMW Program page
 ├── volunteer.html      # Volunteer form
 ├── donations.html      # Donations page
 ├── contact.html        # Contact form
 ├── blog.html           # Blog page
 ├── css/
-│   └── style.css       # All styles
+│   └── style.css       # All styles (African-inspired theme)
 ├── js/
 │   └── main.js         # All JavaScript
+├── assets/
+│   └── images/         # Image assets (place your photos here)
 └── README.md           # This file
 ```
 
-## Features Removed from Full-Stack Version
+## Images
 
-The following features from the `development` branch are **not available** in this static version:
+To add your organization's photos:
 
-- ❌ Admin dashboard (requires authentication)
-- ❌ Firebase integration (authentication, Firestore, Storage)
-- ❌ Express.js backend API
-- ❌ Dynamic blog post creation/editing
-- ❌ Payment gateway integration (PayFast/Yoco)
-- ❌ Real-time data fetching
-- ❌ User authentication
-- ❌ File uploads
+1. Place your images in the `assets/images/` folder
+2. Update the `src` attributes in the HTML files to point to your images
+3. Images currently use Unsplash placeholders with `onerror` fallbacks
+
+**Recommended image sizes:**
+- Hero images: 1200x800px
+- Team photos: 400x400px (square)
+- Blog thumbnails: 800x600px
+- Program images: 800x600px
+
+## Contact Information
+
+- **Founder & CEO:** Anna Koketso Mmatshaka
+- **Phone:** 078 646 3882
+- **Email:** tsogaafricanchild@gmail.com
+- **Website:** www.tsogaafricanchild.com
+- **Address:** 7 Ramskin, Atteridgeville, Pretoria, 0008
 
 ## Forms Configuration
 
@@ -58,6 +79,7 @@ The contact and volunteer forms use **Formspree** for form submissions. To make 
 3. Replace `YOUR_FORM_ID` in the following files:
    - `contact.html` — line with `action="https://formspree.io/f/YOUR_FORM_ID"`
    - `volunteer.html` — line with `action="https://formspree.io/f/YOUR_FORM_ID"`
+   - `blog.html` — newsletter subscription form
 
 ## Enabling GitHub Pages
 
@@ -90,43 +112,24 @@ python3 -m http.server 8000
 ## Customization
 
 ### Colors
-Edit the CSS variables in `css/style.css` at the `:root` selector:
+The CSS uses an African-inspired color palette with earth tones:
+- **Primary Green:** #2D5A3D (represents growth and healing)
+- **Accent Gold:** #D4A84B (represents African heritage and warmth)
+- **Dark:** #1A1A1A (for text and dark sections)
 
-```css
-:root {
-  --color-primary: #1a5f3f;      /* Main brand color */
-  --color-accent: #22c55e;       /* Accent color */
-  --color-dark: #111827;         /* Dark backgrounds */
-  /* ... */
-}
-```
+Edit the CSS variables in `css/style.css` at the `:root` selector to customize.
 
 ### Content
 All content is in plain HTML. Edit the `.html` files directly to update text, images, and links.
 
-### Images
-Replace image URLs in the HTML files. Current images use Unsplash placeholders.
+## Tax Deductibility
 
-## Full-Stack Version
-
-For the full-featured version with:
-- React + TypeScript frontend
-- Firebase backend (Auth, Firestore, Storage)
-- Express.js API server
-- Admin dashboard
-- Payment integration
-
-Switch to the `development` branch:
-
-```bash
-git checkout development
-```
-
-See `README.md` on that branch for setup instructions.
+Tsoga African Child NPC is a registered Non-Profit Company (2024/659725/08) with SARS tax number 9641744199. Donations may be tax-deductible under Section 18A. Contact us for tax certificates.
 
 ---
 
-**ATT NGO** — Awaken. Thrive. Transform.  
-Empowering South African learners through mental wellness initiatives.
+**TSOGA AFRICAN CHILD NPC** — Awaken. Thrive. Transform.
 
-NPO Registration: IT000123/2026/ZA
+Supporting Resilience Mental Wellness Initiative for South African learners.
+
+NPC Registration: 2024/659725/08 | Tax: 9641744199

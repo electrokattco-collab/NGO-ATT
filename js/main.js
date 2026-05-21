@@ -1,4 +1,4 @@
-// ATT NGO - Main JavaScript
+// TSOGA AFRICAN CHILD NPC - Main JavaScript
 (function() {
   'use strict';
 
