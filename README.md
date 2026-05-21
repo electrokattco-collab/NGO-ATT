@@ -1,82 +1,132 @@
-# Awaken Thrive Transform (ATT) NGO Platform
+# ATT NGO - Static Site (GitHub Pages)
 
-A high-resilience, enterprise-grade NGO management platform engineered for South African mental wellness cohorts.
+This is the **static GitHub Pages version** of the ATT NGO website. It contains pure HTML, CSS, and JavaScript with no build steps, no server requirements, and no external dependencies.
 
-## 🚀 Strategic Architecture
+## Branch Information
 
-This platform follows a modular, scalable architecture designed for production-readiness.
+- **`main`** (this branch): Static GitHub Pages site — what you're viewing now
+- **`development`**: Full-stack React + TypeScript + Firebase version with admin dashboard and dynamic features
 
-- **Frontend:** React 19 + TailwindCSS 4 (Utility-first precise styling)
-- **Engine:** Vite (Optimized build pipeline)
-- **Database:** Firebase Firestore (Real-time NoSQL infrastructure)
-- **Auth:** Firebase Authentication (Secure identity management)
-- **Animation:** Framer Motion (Kinetic UI reveals)
-- **Logic:** Service-oriented architecture with custom hooks integration
+## Pages
 
-## 📂 Intelligence Structure
+| Page | File | Description |
+|------|------|-------------|
+| Home | `index.html` | Landing page with mission overview |
+| About | `about.html` | Organization story, mission, vision, team |
+| Programs | `programs.html` | Mental wellness intervention programs |
+| Volunteer | `volunteer.html` | Volunteer application form (Formspree) |
+| Donations | `donations.html` | Donation information and methods |
+| Contact | `contact.html` | Contact form (Formspree) and office info |
+| Blog | `blog.html` | Static blog posts and articles |
+
+## File Structure
 
 ```
-src/
-├── animations/ # Strategic kinetic reveals
-├── components/
-│   ├── common/ # Universal tactical elements (Navbar, Footer)
-│   └── ui/     # Atomic reusable primitives (Button, Input, Card)
-├── constants/  # Centralized system configurations
-├── context/    # Identity and session management
-├── firebase/   # Core infrastructure setup
-├── hooks/      # Higher-order logic (useCollection, useAuth)
-├── layouts/    # Structural blueprints (Main, Admin)
-├── pages/      # Mission pages & operational dashboards
-├── services/   # Strategic internal services (Firebase, Payments)
-├── types/      # TypeScript matrix definitions
-└── utils/      # Utility interceptors (Formatting, Slugs)
+├── index.html          # Homepage
+├── about.html          # About page
+├── programs.html       # Programs page
+├── volunteer.html      # Volunteer form
+├── donations.html      # Donations page
+├── contact.html        # Contact form
+├── blog.html           # Blog page
+├── css/
+│   └── style.css       # All styles
+├── js/
+│   └── main.js         # All JavaScript
+└── README.md           # This file
 ```
 
-## 🛠 Operational Setup
+## Features Removed from Full-Stack Version
 
-1. **Clone the repository**
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-3. **Configure Environment Variables:**
-   Create a `.env` file based on `.env.example` and fill in production credentials.
-   - In production, `SESSION_SECRET` must be strong and not the default placeholder.
-   - `CORS_ORIGIN` must contain only your production domain.
-   - `ENABLE_PAYMENTS` should be `false` for staging and `true` for live launch.
-4. **Initiate Development:**
-   ```bash
-   npm run dev
-   ```
+The following features from the `development` branch are **not available** in this static version:
 
-## 🚀 Production and Rollout Guidance
+- ❌ Admin dashboard (requires authentication)
+- ❌ Firebase integration (authentication, Firestore, Storage)
+- ❌ Express.js backend API
+- ❌ Dynamic blog post creation/editing
+- ❌ Payment gateway integration (PayFast/Yoco)
+- ❌ Real-time data fetching
+- ❌ User authentication
+- ❌ File uploads
 
-- Use separate Firebase projects for `development`, `staging`, and `production`.
-- Keep `.env` local and never commit private keys or `FIREBASE_SERVICE_ACCOUNT` JSON.
-- For safe rollout, start with an internal beta or canary deployment to a subset of traffic.
-- Verify payment gateways in sandbox mode before switching `PAYFAST_SANDBOX_MODE=false` and enabling live Yoco keys.
-- Confirm monitoring is configured via `SENTRY_DSN` or `LOG_AGGREGATOR_URL` before full launch.
+## Forms Configuration
 
-## 🛡 Security Protocol
+The contact and volunteer forms use **Formspree** for form submissions. To make them work:
 
-The platform implements **Zero-Trust Firestore Security Rules**.
-- Identity-based access control.
-- Attribute-based validation (isValid[Entity] blueprints).
-- Purge protection for sensitive operational data.
-- Relational mapping between users and administrative roles.
+1. Sign up at [formspree.io](https://formspree.io)
+2. Create two forms (contact and volunteer)
+3. Replace `YOUR_FORM_ID` in the following files:
+   - `contact.html` — line with `action="https://formspree.io/f/YOUR_FORM_ID"`
+   - `volunteer.html` — line with `action="https://formspree.io/f/YOUR_FORM_ID"`
 
-## 💳 Payment Logistics
+## Enabling GitHub Pages
 
-Pre-integrated structures for:
-- **Yoco Checkout:** Targeted at ZAR transactions.
-- **PayFast Form Logic:** Supporting South African localized gateways.
+To deploy this site on GitHub Pages:
 
-## 📈 Impact Metrics
+1. Go to your repository on GitHub
+2. Click **Settings** → **Pages** (in the left sidebar)
+3. Under **Source**, select **Deploy from a branch**
+4. Select **`main`** branch and **`/` (root)** folder
+5. Click **Save**
+6. Your site will be available at `https://yourusername.github.io/your-repo-name`
 
-- **Real-time Analytics:** Intelligence dashboard for administrative oversight.
-- **Volunteer Workflow:** Authorize/Decline recruits with single-click tactical actions.
-- **Blog Content Management:** Markdown-enabled article deployment system.
+## Local Development
+
+Since this is a static site, no build tools are required. Simply:
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/your-repo-name.git
+cd your-repo-name
+
+# Open in browser (macOS)
+open index.html
+
+# Or use a simple HTTP server for better compatibility
+python3 -m http.server 8000
+# Then visit http://localhost:8000
+```
+
+## Customization
+
+### Colors
+Edit the CSS variables in `css/style.css` at the `:root` selector:
+
+```css
+:root {
+  --color-primary: #1a5f3f;      /* Main brand color */
+  --color-accent: #22c55e;       /* Accent color */
+  --color-dark: #111827;         /* Dark backgrounds */
+  /* ... */
+}
+```
+
+### Content
+All content is in plain HTML. Edit the `.html` files directly to update text, images, and links.
+
+### Images
+Replace image URLs in the HTML files. Current images use Unsplash placeholders.
+
+## Full-Stack Version
+
+For the full-featured version with:
+- React + TypeScript frontend
+- Firebase backend (Auth, Firestore, Storage)
+- Express.js API server
+- Admin dashboard
+- Payment integration
+
+Switch to the `development` branch:
+
+```bash
+git checkout development
+```
+
+See `README.md` on that branch for setup instructions.
 
 ---
-**ATT NGO Operational Directive 2026**
-*Awaken. Thrive. Transform.*
+
+**ATT NGO** — Awaken. Thrive. Transform.  
+Empowering South African learners through mental wellness initiatives.
+
+NPO Registration: IT000123/2026/ZA
