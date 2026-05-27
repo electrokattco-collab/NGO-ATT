@@ -67,19 +67,37 @@ To add your organization's photos:
 - **Founder & CEO:** Anna Koketso Mmatshaka
 - **Phone:** 078 646 3882
 - **Email:** tsogaafricanchild@gmail.com
-- **Website:** www.tsogaafricanchild.com
+- **Website:** electrokattco-collab.github.io/NGO-ATT
 - **Address:** 7 Ramskin, Atteridgeville, Pretoria, 0008
 
-## Forms Configuration
 
-The contact and volunteer forms use **Formspree** for form submissions. To make them work:
+### Active Form Endpoints
 
-1. Sign up at [formspree.io](https://formspree.io)
-2. Create two forms (contact and volunteer)
-3. Replace `YOUR_FORM_ID` in the following files:
-   - `contact.html` — line with `action="https://formspree.io/f/YOUR_FORM_ID"`
-   - `volunteer.html` — line with `action="https://formspree.io/f/YOUR_FORM_ID"`
-   - `blog.html` — newsletter subscription form
+| Form | Form ID | Endpoint URL | Used In |
+|------|---------|--------------|---------|
+| **Contact Form** | `xredrzqw` | `https://formspree.io/f/xredrzqw` | `contact.html` |
+| **Volunteer Form** | `xdajynzk` | `https://formspree.io/f/xdajynzk` | `volunteer.html` |
+| **Newsletter** | `xpqnkadk` | `https://formspree.io/f/xpqnkadk` | All pages (footer) |
+
+### How It Works
+
+The forms use the **Basic HTML** integration method - when a user submits a form, the data is sent directly to Formspree's servers via POST request. Formspree then forwards the submission to your email and stores it in your dashboard.
+
+### Testing the Forms
+
+1. Deploy the updated site to GitHub Pages
+2. Visit each form page and submit a test entry:
+   - Go to **Contact** page → Send a test message
+   - Go to **Volunteer** page → Submit a test application
+   - Enter an email in any **Newsletter** signup → Subscribe
+3. Check your email (and spam folder) for submission notifications
+4. Log into your [Formspree dashboard](https://formspree.io) to view all submissions
+
+### Formspree Free Plan Limits
+- **50 submissions per month per form**
+- Email notifications sent to registered email
+- All submissions stored in dashboard for 30 days
+
 
 ## Enabling GitHub Pages
 

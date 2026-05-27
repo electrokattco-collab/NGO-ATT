@@ -1272,6 +1272,40 @@ h1, h2, h3, h4, h5, h6 {
   flex-shrink: 0;
 }
 
+/* Bank Details */
+.bank-details {
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.bank-detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-gray-100);
+}
+
+.bank-detail-row:last-child {
+  border-bottom: none;
+}
+
+.bank-label {
+  font-weight: 600;
+  color: var(--color-gray-600);
+  font-size: 0.875rem;
+}
+
+.bank-value {
+  font-weight: 700;
+  color: var(--color-gray-900);
+  font-size: 0.875rem;
+  font-family: monospace;
+}
+
 .testimonial-mini {
   margin-top: 2rem;
   padding: 1.5rem;
@@ -1861,4 +1895,99 @@ h1, h2, h3, h4, h5, h6 {
   border-top: 1px solid var(--color-gray-800);
   color: var(--color-gray-500);
   font-size: 0.875rem;
+}
+
+/* Team Cards v2 - New Card Style */
+.team-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.team-card-v2 {
+  background: var(--color-white);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.team-card-v2:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.team-card-image-container {
+  width: 100%;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+}
+
+.team-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.team-card-v2:hover .team-card-image {
+  transform: scale(1.05);
+}
+
+.team-card-content {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.team-card-role {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-primary);
+  background: rgba(45, 90, 61, 0.1);
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-full);
+  margin-bottom: 0.75rem;
+}
+
+.team-card-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-dark);
+  margin: 0;
+}
+
+/* Logo Image Styles */
+.logo-image {
+  display: block;
+  max-height: 50px;
+  width: auto;
+  object-fit: contain;
+}
+
+.footer-logo .logo-image {
+  max-height: 60px;
+}
+
+/* Section Dark Team Header */
+.team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .team-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .team-grid-cards {
+    grid-template-columns: 1fr;
+  }
 }
