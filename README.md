@@ -66,7 +66,7 @@ To add your organization's photos:
 
 - **Founder & CEO:** Anna Koketso Mmatshaka
 - **Phone:** 078 646 3882
-- **Email:** tsogaafricanchild@gmail.com
+- **Email:** child@outlook.com
 - **Website:** electrokattco-collab.github.io/NGO-ATT
 - **Address:** 7 Ramskin, Atteridgeville, Pretoria, 0008
 
